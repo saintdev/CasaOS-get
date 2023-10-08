@@ -63,20 +63,22 @@ install_whiptail() {
     if [ -x "$(command -v whiptail)" ]; then
         echo ""
     else
-        if [[ -r /etc/os-release ]]; then
+        if [ -r "/etc/os-release" ]; then
             lsb_dist="$(. /etc/os-release && echo "$ID")"
         fi
-        if [[ $lsb_dist == "openwrt" ]]; then
+        if [ "$lsb_dist" = "openwrt" ]; then
             opkg update
             opkg install whiptail
             #exit 1
-        elif [[ $lsb_dist == "debian" ]] || [[ $lsb_dist == "ubuntu" ]] || [[ $lsb_dist == "raspbian" ]]; then
-            ((EUID)) && sudo_cmd="sudo"
+        elif [ "$lsb_dist" = "debian" ] || [ "$lsb_dist" = "ubuntu" ] || [ "$lsb_dist" = "raspbian" ]; then
+            [ "$(id -u)" -ne 0 ] && sudo_cmd="sudo"
             $sudo_cmd apt -y update
             $sudo_cmd apt -y install whiptail
-        elif [[ $lsb_dist == "centos" ]]; then
+        elif [ "$lsb_dist" = "centos" ]; then
             yum update
             yum install newt
+        elif [ "$lsb_dist" = "alpine" ]; then
+            apk add --update-cache newt
         fi
     fi
 }
@@ -92,14 +94,22 @@ install_whiptail() {
 #######################################
 
 uninstall_docker() {
-    if [[ $UNSTALL_DOCKER = true ]]; then
-        ((EUID)) && sudo_cmd="sudo"
-        $sudo_cmd apt-get purge -y docker-engine docker docker.io docker-ce docker-ce-cli docker-ce-rootless-extras docker-scan-plugin
-        $sudo_cmd apt-get autoremove -y --purge docker-engine docker docker.io docker-ce docker-ce-cli docker-ce-rootless-extras docker-scan-plugin
+    if [ "$UNSTALL_DOCKER" = "true" ]; then
+        [ "$(id -u)" -ne 0 ] && sudo_cmd="sudo"
+        if [ "$lsb_dist" = "debian" ] || [ "$lsb_dist" = "ubuntu" ] || [ "$lsb_dist" = "raspbian" ]; then
+            $sudo_cmd apt-get purge -y docker-engine docker docker.io docker-ce docker-ce-cli docker-ce-rootless-extras docker-scan-plugin
+            $sudo_cmd apt-get autoremove -y --purge docker-engine docker docker.io docker-ce docker-ce-cli docker-ce-rootless-extras docker-scan-plugin
+        elif [ "$lsb_dist" = "alpine" ]; then
+            $sudo_cmd apk del --rdepends --purge docker
+        fi
 
         $sudo_cmd rm -rf /var/lib/docker /etc/docker
         $sudo_cmd rm /etc/apparmor.d/docker
-        $sudo_cmd groupdel docker
+        if [ ! "$lsb_dist" = "alpine" ]; then
+            $sudo_cmd groupdel docker
+        else
+            $sudo_cmd delgroup docker
+        fi
         $sudo_cmd rm -rf /var/run/docker.sock
     fi
 }
@@ -115,13 +125,13 @@ uninstall_docker() {
 #######################################
 
 uninstall_casaos() {
-    ((EUID)) && sudo_cmd="sudo"
+    [ "$(id -u)" -ne 0 ] && sudo_cmd="sudo"
 
     #stop and remove casaos service
     remove_serveice $service_path $install_path/casaos
 
     #remove casa containers
-    if [[ $REMOVE_CASAOS_CONTAINERS = true ]]; then
+    if [ "$REMOVE_CASAOS_CONTAINERS" = "true" ]; then
         #stop all casaos‘s containers
         official_containers=$($sudo_cmd docker ps -a -q -f "label=origin=official")
         $sudo_cmd docker stop $official_containers
@@ -141,7 +151,7 @@ uninstall_casaos() {
     fi
 
     #remove casa files
-    if [[ $REMOVE_CASAOS_FILES = true ]]; then
+    if [ "$REMOVE_CASAOS_FILES" = "true" ]; then
         $sudo_cmd rm -fr /casaOS
     fi
 
@@ -159,36 +169,21 @@ uninstall_casaos() {
 #######################################
 
 show() {
-    local color=("$@") output grey green red reset
-    if [[ -t 0 || -t 1 ]]; then
+    local output grey green red reset
+    if [ -t 0 ] || [ -t 1 ]; then
         output='\e[0m\r\e[J' grey='\e[90m' green='\e[32m' red='\e[31m' reset='\e[0m'
     fi
     local left="${grey}[$reset" right="$grey]$reset"
     local ok="$left$green  OK  $right " failed="$left${red}FAILED$right " info="$left$green INFO $right "
-    # Print color array from index $1
-    Print() {
-        [[ $1 == 1 ]]
-        for ((i = $1; i < ${#color[@]}; i++)); do
-            output+=${color[$i]}
-        done
-        echo -ne "$output$reset"
-    }
 
-    if (($1 == 0)); then
-        output+=$ok
-        color+=('\n')
-        Print 1
+    case $1 in
+        0 ) output="${output}${ok}";;
+        1 ) output="${output}${failed}";;
+        2 ) output="${output}${info}";;
+    esac
 
-    elif (($1 == 1)); then
-        output+=$failed
-        color+=('\n')
-        Print 1
-
-    elif (($1 == 2)); then
-        output+=$info
-        color+=('\n')
-        Print 1
-    fi
+    shift
+    echo -ne "${output}$*\n${reset}"
 }
 
 #######################################
@@ -201,7 +196,7 @@ show() {
 #   None
 #######################################
 remove_directory() {
-    ((EUID)) && sudo_cmd="sudo"
+    [ "$(id -u)" -ne 0 ] && sudo_cmd="sudo"
     $sudo_cmd rm -fr /casaOS
 }
 
@@ -215,7 +210,7 @@ remove_directory() {
 #   None
 #######################################
 remove_DATA_directory() {
-    ((EUID)) && sudo_cmd="sudo"
+    [ "$(id -u)" -ne 0 ] && sudo_cmd="sudo"
     $sudo_cmd rm -fr /DATA
 }
 
@@ -229,11 +224,16 @@ remove_DATA_directory() {
 #   None
 #######################################
 remove_serveice() {
-    ((EUID)) && sudo_cmd="sudo"
-    $sudo_cmd systemctl disable casaos
-    if [ -f $service_path ]; then
-        show 2 "Try stop CasaOS system service."
-        $sudo_cmd systemctl stop casaos.service # Stop before generation
+    [ "$(id -u)" -ne 0 ] && sudo_cmd="sudo"
+    if [ ! "$lsb_dist" = "alpine" ]; then
+        $sudo_cmd systemctl disable casaos
+        if [ -f $service_path ]; then
+            show 2 "Try stop CasaOS system service."
+            $sudo_cmd systemctl stop casaos.service # Stop before generation
+        fi
+    else
+        $sudo_cmd rc-update del casaos
+        $sudo_cmd rc-service casaos stop
     fi
     $sudo_cmd rm $1
     $sudo_cmd rm $2
