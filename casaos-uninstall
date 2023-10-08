@@ -1,17 +1,17 @@
-#!/bin/bash
+#!/bin/sh
 #
 #           CasaOS Uninstaller Script
 #
 #   GitHub: https://github.com/IceWhaleTech/CasaOS
 #   Issues: https://github.com/IceWhaleTech/CasaOS/issues
-#   Requires: bash, mv, rm, tr, grep, sed
+#   Requires: mv, rm, tr, grep, sed
 #
 #   This script installs CasaOS to your system.
 #   Usage:
 #
-#   	$ curl -fsSL https://get.casaos.io | bash
+#   	$ curl -fsSL https://get.casaos.io | sh
 #   	  or
-#   	$ wget -qO- https://get.casaos.io | bash
+#   	$ wget -qO- https://get.casaos.io | sh
 #
 #   In automated environments, you may want to run as root.
 #   If using curl, we recommend using the -fsSL flags.

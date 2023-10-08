@@ -1,17 +1,17 @@
-#!/usr/bin/bash
+#!/bin/sh
 #
 #           CasaOS Installer Script
 #
 #   GitHub: https://github.com/IceWhaleTech/CasaOS
 #   Issues: https://github.com/IceWhaleTech/CasaOS/issues
-#   Requires: bash, mv, rm, tr, grep, sed, curl/wget, tar, smartmontools, parted, ntfs-3g, net-tools
+#   Requires: mv, rm, tr, grep, sed, curl/wget, tar, smartmontools, parted, ntfs-3g, net-tools
 #
 #   This script installs CasaOS to your system.
 #   Usage:
 #
-#   	$ curl -fsSL https://get.casaos.io | bash
+#   	$ curl -fsSL https://get.casaos.io | sh
 #   	  or
-#   	$ wget -qO- https://get.casaos.io | bash
+#   	$ wget -qO- https://get.casaos.io | sh
 #
 #   In automated environments, you may want to run as root.
 #   If using curl, we recommend using the -fsSL flags.
@@ -527,7 +527,7 @@ DownloadAndInstallCasaOS() {
     for MIGRATION_SCRIPT in "${MIGRATION_SCRIPT_DIR}"/*.sh; do
         Show 2 "Running ${MIGRATION_SCRIPT}..."
 
-        ${sudo_cmd} bash "${MIGRATION_SCRIPT}" || Show 1 "Failed to run migration script"
+        ${sudo_cmd} sh "${MIGRATION_SCRIPT}" || Show 1 "Failed to run migration script"
 
     done
 
@@ -547,7 +547,7 @@ DownloadAndInstallCasaOS() {
 
     for SETUP_SCRIPT in "${SETUP_SCRIPT_DIR}"/*.sh; do
         Show 2 "Running ${SETUP_SCRIPT}..."
-        ${sudo_cmd} bash "${SETUP_SCRIPT}" || Show 1 "Failed to run setup script"
+        ${sudo_cmd} sh "${SETUP_SCRIPT}" || Show 1 "Failed to run setup script"
     done
 
     #Download Uninstall Script

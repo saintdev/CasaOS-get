@@ -1,17 +1,17 @@
-#!/bin/bash
+#!/bin/sh
 #
 #           CasaOS Installer Script
 #
 #   GitHub: https://github.com/IceWhaleTech/CasaOS
 #   Issues: https://github.com/IceWhaleTech/CasaOS/issues
-#   Requires: bash, mv, rm, tr, grep, sed, curl/wget, tar, smartmontools, parted, ntfs-3g, net-tools
+#   Requires: mv, rm, tr, grep, sed, curl/wget, tar, smartmontools, parted, ntfs-3g, net-tools
 #
 #   This script installs CasaOS to your system.
 #   Usage:
 #
-#   	$ curl -fsSL https://get.casaos.io | bash
+#   	$ curl -fsSL https://get.casaos.io | sh
 #   	  or
-#   	$ wget -qO- https://get.casaos.io | bash
+#   	$ wget -qO- https://get.casaos.io | sh
 #
 #   In automated environments, you may want to run as root.
 #   If using curl, we recommend using the -fsSL flags.
@@ -484,7 +484,7 @@ Check_Docker_Install_Final() {
             Check_Docker_Running
         fi
     else
-        Show 1 "Installation failed, please run 'wget -qO - https://get.docker.com | bash' and rerun the CasaOS installation script."
+        Show 1 "Installation failed, please run 'wget -qO - https://get.docker.com | sh' and rerun the CasaOS installation script."
         exit 1
     fi
 }
@@ -493,7 +493,7 @@ Check_Docker_Install_Final() {
 Install_Docker() {
     Show 0 "Docker will be installed automatically."
     echo -e "${COLOUR_GREY}\c"
-    wget -qO - https://get.docker.com | bash
+    wget -qO - https://get.docker.com | sh
     echo -e "${COLOUR_RESET}\c"
     if [ "$?" -ne 0 ]; then # FIXME: This doesn't test what you think it does
         Show 1 "Installation failed, please try again."

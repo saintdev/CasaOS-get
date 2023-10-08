@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 #
 #           CasaOS Uninstaller Script
 #
 #   GitHub: https://github.com/IceWhaleTech/CasaOS
 #   Issues: https://github.com/IceWhaleTech/CasaOS/issues
-#   Requires: bash, mv, rm, tr, grep, sed
+#   Requires: mv, rm, tr, grep, sed
 #
 #   This script installs CasaOS to your system.
 
