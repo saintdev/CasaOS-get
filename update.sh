@@ -38,14 +38,36 @@ set -e
 # GOLBALS                                                                     #
 ###############################################################################
 
-((EUID)) && sudo_cmd="sudo"
+[ "$(id -u)" -ne 0 ] && sudo_cmd="sudo"
 
 # shellcheck source=/dev/null
-source /etc/os-release
+. /etc/os-release
 
 # SYSTEM REQUIREMENTS
-readonly CASA_DEPANDS_PACKAGE=('wget' 'curl' 'smartmontools' 'parted' 'ntfs-3g' 'net-tools' 'udevil' 'samba' 'cifs-utils' 'mergerfs' 'unzip' 'apparmor')
-readonly CASA_DEPANDS_COMMAND=('wget' 'curl' 'smartctl' 'parted' 'ntfs-3g' 'netstat' 'udevil' 'samba' 'mount.cifs' 'mount.mergerfs' 'unzip' 'apparmor_status')
+CASA_DEPANDS_PACKAGE="wget"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} smartmontools"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} parted"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} ntfs-3g"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} net-tools"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} udevil"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} samba"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} cifs-utils"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} mergerfs"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} unzip"
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} apparmor"
+readonly CASA_DEPANDS_PACKAGE
+CASA_DEPANDS_COMMAND="wget"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} smartctl"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} parted"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} ntfs-3g"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} netstat"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} udevil"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} samba"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} mount.cifs"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} mount.mergerfs"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} unzip"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} apparmor_status"
+readonly CASA_DEPANDS_COMMAND
 
 LSB_DIST=$( ( [ -n "${ID_LIKE}" ] && echo "${ID_LIKE}" ) || ( [ -n "${ID}" ] && echo "${ID}" ) )
 readonly LSB_DIST
@@ -64,13 +86,11 @@ readonly DEVMON_CONF_PATH=/etc/conf.d/devmon
 
 # COLORS
 readonly COLOUR_RESET='\e[0m'
-readonly aCOLOUR=(
-    '\e[38;5;154m' # green  	| Lines, bullets and separators
-    '\e[1m'        # Bold white	| Main descriptions
-    '\e[90m'       # Grey		| Credits
-    '\e[91m'       # Red		| Update notifications Alert
-    '\e[33m'       # Yellow		| Emphasis
-)
+readonly COLOUR_GREEN='\e[38;5;154m' # green    	| Lines, bullets and separators
+readonly COLOUR_WHITE='\e[1m'        # Bold white	| Main descriptions
+readonly COLOUR_GREY='\e[90m'        # Grey 		| Credits
+readonly COLOUR_RED='\e[91m'         # Red  		| Update notifications Alert
+readonly COLOUR_YELLOW='\e[33m'      # Yellow		| Emphasis
 
 
 # CASAOS VARIABLES
@@ -80,15 +100,14 @@ CASA_DOWNLOAD_DOMAIN="https://github.com/"
 
 
 # PACKAGE LIST OF CASAOS
-CASA_SERVICES=(
-    "casaos-gateway.service"
-"casaos-message-bus.service"
-"casaos-user-service.service"
-"casaos-local-storage.service"
-"casaos-app-management.service"
-"rclone.service"
-"casaos.service"  # must be the last one so update from UI can work 
-)
+CASA_SERVICES="casaos-gateway"
+CASA_SERVICES="${CASA_SERVICES} casaos-message-bus"
+CASA_SERVICES="${CASA_SERVICES} casaos-user-service"
+CASA_SERVICES="${CASA_SERVICES} casaos-local-storage"
+CASA_SERVICES="${CASA_SERVICES} casaos-app-management"
+CASA_SERVICES="${CASA_SERVICES} rclone"
+CASA_SERVICES="${CASA_SERVICES} casaos.service"  # must be the last one so update from UI can work
+
 
 trap 'onCtrlC' INT
 onCtrlC() {
@@ -128,28 +147,23 @@ fi
 #######################################
 
 Show() {
-    # OK
-    if (($1 == 0)); then
-    	echo -e "- OK $2" | ${sudo_cmd} tee -a /var/log/casaos/upgrade.log
-    # FAILED
-    elif (($1 == 1)); then
-     	echo -e "- FAILED $2" | ${sudo_cmd} tee -a /var/log/casaos/upgrade.log
-	exit 1
-    # INFO
-    elif (($1 == 2)); then
-    	echo -e "- INFO $2" | ${sudo_cmd} tee -a /var/log/casaos/upgrade.log
-    # NOTICE
-    elif (($1 == 3)); then
-    	echo -e "- NOTICE $2" | ${sudo_cmd} tee -a /var/log/casaos/upgrade.log
-    fi
+    case $1 in
+        0 ) echo -e "- OK $2" | ${sudo_cmd} tee -a /var/log/casaos/upgrade.log;;  # OK
+        1 ) # FAILED
+            echo -e "- FAILED $2" | ${sudo_cmd} tee -a /var/log/casaos/upgrade.log
+            exit 1
+            ;;
+        2 ) echo -e "- INFO $2" | ${sudo_cmd} tee -a /var/log/casaos/upgrade.log;;  # INFO
+        3 ) echo -e "- NOTICE $2" | ${sudo_cmd} tee -a /var/log/casaos/upgrade.log;; # NOTICE
+    esac
 }
 
 Warn() {
-    echo -e "${aCOLOUR[3]}$1$COLOUR_RESET"
+    echo -e "${COLOUR_RED}$1$COLOUR_RESET"
 }
 
 GreyStart() {
-    echo -e "${aCOLOUR[2]}\c"
+    echo -e "${COLOUR_GREY}\c"
 }
 
 ColorReset() {
@@ -173,11 +187,11 @@ exist_file() {
 # To solve the problem that Chinese users cannot access github.
 Get_Download_Url_Domain() {
     # Use ipconfig.io/country and https://ifconfig.io/country_code to get the country code
-    REGION=$(${sudo_cmd} curl --connect-timeout 2 -s ipconfig.io/country || echo "")
+    REGION=$(${sudo_cmd} wget -q -T 2 ipconfig.io/country || echo "")
     if [ "${REGION}" = "" ]; then
-       REGION=$(${sudo_cmd} curl --connect-timeout 2 -s https://ifconfig.io/country_code || echo "")
+       REGION=$(${sudo_cmd} wget -q -T 2 https://ifconfig.io/country_code || echo "")
     fi
-    if [[ "${REGION}" = "China" ]] || [[ "${REGION}" = "CN" ]]; then
+    if [ "${REGION}" = "China" ] || [ "${REGION}" = "CN" ]; then
         CASA_DOWNLOAD_DOMAIN="https://casaos.oss-cn-shanghai.aliyuncs.com/"
     fi
 }
@@ -200,17 +214,15 @@ Check_Arch() {
         ;;
     esac
     Show 0 "Your hardware architecture is : $UNAME_M"
-    CASA_PACKAGES=(
-        "${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/CasaOS-Gateway/releases/download/v0.4.4-1/linux-${TARGET_ARCH}-casaos-gateway-v0.4.4-1.tar.gz"
-"${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/CasaOS-MessageBus/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-message-bus-v0.4.4.tar.gz"
-"${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/CasaOS-UserService/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-user-service-v0.4.4.tar.gz"
-"${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/CasaOS-LocalStorage/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-local-storage-v0.4.4.tar.gz"
-"${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/CasaOS-AppManagement/releases/download/v0.4.4-1/linux-${TARGET_ARCH}-casaos-app-management-v0.4.4-1.tar.gz"
-"${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/CasaOS/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-v0.4.4.tar.gz"
-"${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/CasaOS-CLI/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-cli-v0.4.4.tar.gz"
-"${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/CasaOS-UI/releases/download/v0.4.4-1/linux-all-casaos-v0.4.4-1.tar.gz"
-"${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/CasaOS-AppStore/releases/download/v0.4.4/linux-all-appstore-v0.4.4.tar.gz" 
-    )
+    CASA_PACKAGES="CasaOS-Gateway/releases/download/v0.4.4-1/linux-${TARGET_ARCH}-casaos-gateway-v0.4.4-1.tar.gz"
+    CASA_PACKAGES="${CASA_PACKAGES} CasaOS-MessageBus/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-message-bus-v0.4.4.tar.gz"
+    CASA_PACKAGES="${CASA_PACKAGES} CasaOS-UserService/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-user-service-v0.4.4.tar.gz"
+    CASA_PACKAGES="${CASA_PACKAGES} CasaOS-LocalStorage/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-local-storage-v0.4.4.tar.gz"
+    CASA_PACKAGES="${CASA_PACKAGES} CasaOS-AppManagement/releases/download/v0.4.4-1/linux-${TARGET_ARCH}-casaos-app-management-v0.4.4-1.tar.gz"
+    CASA_PACKAGES="${CASA_PACKAGES} CasaOS/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-v0.4.4.tar.gz"
+    CASA_PACKAGES="${CASA_PACKAGES} CasaOS-CLI/releases/download/v0.4.4/linux-${TARGET_ARCH}-casaos-cli-v0.4.4.tar.gz"
+    CASA_PACKAGES="${CASA_PACKAGES} CasaOS-UI/releases/download/v0.4.4-1/linux-all-casaos-v0.4.4-1.tar.gz"
+    CASA_PACKAGES="${CASA_PACKAGES} CasaOS-AppStore/releases/download/v0.4.4/linux-all-appstore-v0.4.4.tar.gz"
 }
 
 # 2 Check Distribution
@@ -230,6 +242,7 @@ Check_Distribution() {
         ;;
     *alpine*)
         Show 1 "Aborted, Alpine installation is not yet supported."
+        USE_SYSTEMD=false
         exit 1
         ;;
     *trisquel*)
@@ -240,8 +253,10 @@ Check_Distribution() {
         ;;
     esac
     Show ${sType} "Your Linux Distribution is : ${LSB_DIST} ${notice}"
-    if [[ ${sType} == 0 ]]; then
-        select yn in "Yes" "No"; do
+    if [ "${sType}" = "0" ]; then
+        while true; do
+            echo -n -e "Y/n: "
+            read -r yn
             case $yn in
             [yY][eE][sS] | [yY])
                 Show 0 "Distribution check has been ignored."
@@ -260,8 +275,8 @@ Check_Distribution() {
 Check_Port() {
     TCPListeningnum=$(${sudo_cmd} netstat -an | grep ":$1 " | awk '$1 == "tcp" && $NF == "LISTEN" {print $0}' | wc -l)
     UDPListeningnum=$(${sudo_cmd} netstat -an | grep ":$1 " | awk '$1 == "udp" && $NF == "0.0.0.0:*" {print $0}' | wc -l)
-    ((Listeningnum = TCPListeningnum + UDPListeningnum))
-    if [[ $Listeningnum == 0 ]]; then
+    Listeningnum=$((TCPListeningnum + UDPListeningnum))
+    if [ "$Listeningnum" -eq 0 ]; then
         echo "0"
     else
         echo "1"
@@ -288,49 +303,52 @@ Update_Package_Resource() {
 
 # Install depends package
 Install_Depends() {
-    for ((i = 0; i < ${#CASA_DEPANDS_COMMAND[@]}; i++)); do
-        cmd=${CASA_DEPANDS_COMMAND[i]}
-        if [[ ! -x $(command -v "${cmd}") ]]; then
-            packagesNeeded=${CASA_DEPANDS_PACKAGE[i]}
-            Show 2 "Install the necessary dependencies: $packagesNeeded "
-            GreyStart
-            if [ -x "$(command -v apk)" ]; then
-                ${sudo_cmd} apk add --no-cache "$packagesNeeded"
-            elif [ -x "$(command -v apt-get)" ]; then
-                ${sudo_cmd} apt-get -y -q install "$packagesNeeded" --no-upgrade
-            elif [ -x "$(command -v dnf)" ]; then
-                ${sudo_cmd} dnf install "$packagesNeeded"
-            elif [ -x "$(command -v zypper)" ]; then
-                ${sudo_cmd} zypper install "$packagesNeeded"
-            elif [ -x "$(command -v yum)" ]; then
-                ${sudo_cmd} yum install "$packagesNeeded"
-            elif [ -x "$(command -v pacman)" ]; then
-                ${sudo_cmd} pacman -S "$packagesNeeded"
-            elif [ -x "$(command -v paru)" ]; then
-                ${sudo_cmd} paru -S "$packagesNeeded"
-            else
-                Show 1 "Package manager not found. You must manually install: $packagesNeeded"
-            fi
-            ColorReset
+    local packagesNeeded
+
+    set -- $CASA_DEPANDS_PACKAGE
+    for cmd in $CASA_DEPANDS_COMMAND; do
+        if [ ! -x "$(${sudo_cmd} which "$cmd")" ]; then
+            packagesNeeded="${packagesNeeded} $1"
         fi
+        shift
     done
+    Show 2 "Install the necessary dependencies: $packagesNeeded "
+    GreyStart
+    if [ -x "$(command -v apk)" ]; then
+        ${sudo_cmd} apk add --no-cache --virtual casaos-deps "$packagesNeeded"
+    elif [ -x "$(command -v apt-get)" ]; then
+        ${sudo_cmd} apt-get -y -q install "$packagesNeeded" --no-upgrade
+    elif [ -x "$(command -v dnf)" ]; then
+        ${sudo_cmd} dnf install "$packagesNeeded"
+    elif [ -x "$(command -v zypper)" ]; then
+        ${sudo_cmd} zypper install "$packagesNeeded"
+    elif [ -x "$(command -v yum)" ]; then
+        ${sudo_cmd} yum install "$packagesNeeded"
+    elif [ -x "$(command -v pacman)" ]; then
+        ${sudo_cmd} pacman -S "$packagesNeeded"
+    elif [ -x "$(command -v paru)" ]; then
+        ${sudo_cmd} paru -S "$packagesNeeded"
+    else
+        Show 1 "Package manager not found. You must manually install: $packagesNeeded"
+    fi
+    ColorReset
 }
 
 Check_Dependency_Installation() {
-    for ((i = 0; i < ${#CASA_DEPANDS_COMMAND[@]}; i++)); do
-        cmd=${CASA_DEPANDS_COMMAND[i]}
-        if [[ ! -x $(command -v "${cmd}") ]]; then
-            packagesNeeded=${CASA_DEPANDS_PACKAGE[i]}
+    set -- $CASA_DEPANDS_PACKAGE
+    for cmd in ${CASA_DEPANDS_COMMAND}; do
+        if [ ! -x "$(${sudo_cmd} which "$cmd")" ]; then
             Show 1 "Dependency \e[33m$packagesNeeded \e[0m installation failed, please try again manually!"
             exit 1
         fi
+        shift
     done
 }
 
 #Install Rclone
 Install_rclone_from_source() {
   ${sudo_cmd} wget -qO ./install.sh https://rclone.org/install.sh
-  if [[ "${REGION}" = "China" ]] || [[ "${REGION}" = "CN" ]]; then
+  if [ "${REGION}" = "China" ] || [ "${REGION}" = "CN" ]; then
     sed -i 's/downloads.rclone.org/casaos.oss-cn-shanghai.aliyuncs.com/g' ./install.sh
   else
     sed -i 's/downloads.rclone.org/get.casaos.io/g' ./install.sh
@@ -347,7 +365,7 @@ Install_rclone_from_source() {
 
 Install_Rclone() {
   Show 2 "Install the necessary dependencies: Rclone"
-  if [[ -x "$(command -v rclone)" ]]; then
+  if [ -x "$(command -v rclone)" ]; then
     version=$(rclone --version 2>>errors | head -n 1)
     target_version="rclone v1.61.1"
     rclone1="${PREFIX}/usr/share/man/man1/rclone.1.gz"
@@ -355,7 +373,7 @@ Install_Rclone() {
       Show 3 "Will change rclone from $version to $target_version."
       rclone_path=$(command -v rclone)
       ${sudo_cmd} rm -rf "${rclone_path}"
-      if [[ -f "$rclone1" ]]; then
+      if [ -f "$rclone1" ]; then
         ${sudo_cmd} rm -rf "$rclone1"
       fi
       Install_rclone_from_source
@@ -365,24 +383,90 @@ Install_Rclone() {
   else
     Install_rclone_from_source
   fi
-  ${sudo_cmd} systemctl enable rclone || Show 3 "Service rclone does not exist."
+  Enable_Service rclone || Show 3 "Service rclone does not exist."
 }
 
 
+Is_Service_Running() {
+    if [ "$USE_SYSTEMD" = "true" ]; then
+        ${sudo_cmd} systemctl is-active --quiet "${1}.service"
+    else
+        ${sudo_cmd} "/etc/init.d/${1}" --quiet status
+    fi
+}
+
+Start_Service() {
+    if [ "$USE_SYSTEMD" = "true" ]; then
+        ${sudo_cmd} systemctl start "${1}.service"
+    else
+        ${sudo_cmd} rc-service "${1}" start
+    fi
+}
+
+Enable_Service() {
+    if [ "$USE_SYSTEMD" = "true" ]; then
+        ${sudo_cmd} systemctl enable "${1}.service"
+    else
+        ${sudo_cmd} rc-update add "${1}" default
+    fi
+}
+
+Stop_Service() {
+    if [ "$USE_SYSTEMD" = "true" ]; then
+        ${sudo_cmd} systemctl stop "${1}.service"
+    else
+        ${sudo_cmd} rc-service "${1}" stop
+    fi
+}
+
+Restart_Service() {
+    if [ "$USE_SYSTEMD" = "true" ]; then
+        ${sudo_cmd} systemctl restart "${1}.service"
+    else
+        ${sudo_cmd} rc-service "${1}" restart
+    fi
+}
+
+Add_User() {
+    local args OPTIND
+
+    if [ "$LSB_DIST" = "alpine" ]; then
+        while getopts ":Mu:" arg; do
+            case "$arg" in
+            M)
+                args="${args} -H"
+                ;;
+            u)
+                args="${args} -u ${OPTARG}"
+                ;;
+            *)
+                break
+                ;;
+            esac
+        done
+        shift $((OPTIND - 1))
+
+        ${sudo_cmd} adduser "${args} $*"
+    else
+        ${sudo_cmd} useradd "$@"
+    fi
+}
+
 #Configuration Addons
 Configuration_Addons() {
+    local svcname
     Show 2 "Configuration CasaOS Addons"
     #Remove old udev rules
-    if [[ -f "${PREFIX}/etc/udev/rules.d/11-usb-mount.rules" ]]; then
+    if [ -f "${PREFIX}/etc/udev/rules.d/11-usb-mount.rules" ]; then
         ${sudo_cmd} rm -rf "${PREFIX}/etc/udev/rules.d/11-usb-mount.rules"
     fi
 
-    if [[ -f "${PREFIX}/etc/systemd/system/usb-mount@.service" ]]; then
+    if [ -f "${PREFIX}/etc/systemd/system/usb-mount@.service" ]; then
         ${sudo_cmd} rm -rf "${PREFIX}/etc/systemd/system/usb-mount@.service"
     fi
 
     #Udevil
-    if [[ -f "${PREFIX}${UDEVIL_CONF_PATH}" ]]; then
+    if [ -f "${PREFIX}${UDEVIL_CONF_PATH}" ]; then
 
         # Revert previous CasaOS udevil configuration
         #shellcheck disable=SC2016
@@ -390,19 +474,25 @@ Configuration_Addons() {
         ${sudo_cmd} sed -i '/exfat/s/, nonempty//g' "$PREFIX"${UDEVIL_CONF_PATH}
         ${sudo_cmd} sed -i '/default_options/s/, noexec//g' "$PREFIX"${UDEVIL_CONF_PATH}
         ${sudo_cmd} sed -i '/^ARGS/cARGS="--mount-options nosuid,nodev,noatime --ignore-label EFI"' "$PREFIX"${DEVMON_CONF_PATH}
-        
+
         # GreyStart
         # Add a devmon user
         USERNAME=devmon
-        id ${USERNAME} &>/dev/null || {
-            ${sudo_cmd} useradd -M -u 300 ${USERNAME}
-            ${sudo_cmd} usermod -L ${USERNAME}
+        id ${USERNAME} >/dev/null 2>&1 || {
+            Add_User -M -u 300 ${USERNAME}
+            ${sudo_cmd} passwd -l ${USERNAME}
         }
+
+        if [ "$USE_SYSTEMD" = "true" ]; then
+            svcname="devmon@${USERNAME}"
+        else
+            svcname="devmon"
+        fi
 
         # Add and start Devmon service
         GreyStart
-        ${sudo_cmd} systemctl enable devmon@devmon
-        ${sudo_cmd} systemctl start devmon@devmon
+        Enable_Service "$svcname"
+        Start_Service "$svcname"
         ColorReset
         # ColorReset
     fi
@@ -410,35 +500,36 @@ Configuration_Addons() {
 
 # Download And Install CasaOS
 DownloadAndInstallCasaOS() {
-
+    local BASE_URL="https://github.com/IceWhaleTech/"
     if [ -z "${BUILD_DIR}" ]; then
 
         ${sudo_cmd} mkdir -p ${TMP_ROOT} || Show 1 "Failed to create temporary directory"
         TMP_DIR=$(${sudo_cmd} mktemp -d -p ${TMP_ROOT} || Show 1 "Failed to create temporary directory")
 
-        pushd "${TMP_DIR}"
+        (
+            cd "${TMP_DIR}"
 
-        for PACKAGE in "${CASA_PACKAGES[@]}"; do
-            Show 2 "Downloading ${PACKAGE}..."
-          
-            ${sudo_cmd} wget -t 3 -q --show-progress -c  "${PACKAGE}" || Show 1 "Failed to download package"
-            
-        done
+            for PACKAGE in ${CASA_PACKAGES}; do
+                Show 2 "Downloading ${PACKAGE}..."
 
-        for PACKAGE_FILE in linux-*.tar.gz; do
-            Show 2 "Extracting ${PACKAGE_FILE}..."
-            ${sudo_cmd} tar zxf "${PACKAGE_FILE}" || Show 1 "Failed to extract package"
-        done
+                ${sudo_cmd} wget -t 3 -q -c  "${BASE_URL}${PACKAGE}" || Show 1 "Failed to download package"
+
+            done
+
+            for PACKAGE_FILE in linux-*.tar.gz; do
+                Show 2 "Extracting ${PACKAGE_FILE}..."
+                ${sudo_cmd} tar zxf "${PACKAGE_FILE}" || Show 1 "Failed to extract package"
+            done
+        )
 
         BUILD_DIR=$(realpath -e "${TMP_DIR}"/build || Show 1 "Failed to find build directory")
 
-        popd
     fi
 
-    # for SERVICE in "${CASA_SERVICES[@]}"; do
+    # for SERVICE in ${CASA_SERVICES}; do
     #     Show 2 "Stopping ${SERVICE}..."
 
-    #   systemctl stop "${SERVICE}" || Show 3 "Service ${SERVICE} does not exist."
+    #     Stop_Service "${SERVICE}" || Show 3 "Service ${SERVICE} does not exist."
 
     # done
 
@@ -458,7 +549,7 @@ DownloadAndInstallCasaOS() {
     MANIFEST_FILE=${BUILD_DIR}/sysroot/var/lib/casaos/manifest
     ${sudo_cmd} touch "${MANIFEST_FILE}" || Show 1 "Failed to create manifest file"
 
-    
+
     find "${SYSROOT_DIR}" -type f | ${sudo_cmd} cut -c ${#SYSROOT_DIR}- | ${sudo_cmd} cut -c 2- | ${sudo_cmd} tee "${MANIFEST_FILE}" >/dev/null || Show 1 "Failed to create manifest file"
 
     ${sudo_cmd} cp -rf "${SYSROOT_DIR}"/* / >> /dev/null || Show 1 "Failed to install CasaOS"
@@ -469,24 +560,24 @@ DownloadAndInstallCasaOS() {
         Show 2 "Running ${SETUP_SCRIPT}..."
         ${sudo_cmd} bash "${SETUP_SCRIPT}" || Show 1 "Failed to run setup script"
     done
-    
+
     # Reset Permissions
     UI_EVENTS_REG_SCRIPT=/etc/casaos/start.d/register-ui-events.sh
-    if [[ -f ${UI_EVENTS_REG_SCRIPT} ]]; then
+    if [ -f "${UI_EVENTS_REG_SCRIPT}" ]; then
         ${sudo_cmd} chmod +x $UI_EVENTS_REG_SCRIPT
     fi
-    
+
     # Modify app store configuration
     sed -i "/ServerAPI/d" "$PREFIX/etc/casaos/app-management.conf"
     sed -i "/ServerApi/d" "$PREFIX/etc/casaos/app-management.conf"
     sed -i '/appstore/d' "$PREFIX/etc/casaos/app-management.conf"
     sed -i "/server/aappstore = ${CASA_DOWNLOAD_DOMAIN}IceWhaleTech/_appstore/archive/refs/heads/main.zip" "$PREFIX/etc/casaos/app-management.conf"
-    
+
     #Download Uninstall Script
-    if [[ -f ${PREFIX}/tmp/casaos-uninstall ]]; then
+    if [ -f "${PREFIX}/tmp/casaos-uninstall" ]; then
         ${sudo_cmd} rm -rf "${PREFIX}/tmp/casaos-uninstall"
     fi
-    ${sudo_cmd} curl -fsSLk "$CASA_UNINSTALL_URL" >"${PREFIX}/tmp/casaos-uninstall"
+    ${sudo_cmd} wget -qO "${PREFIX}/tmp/casaos-uninstall" "$CASA_UNINSTALL_URL"
     ${sudo_cmd} cp -rvf "${PREFIX}/tmp/casaos-uninstall" $CASA_UNINSTALL_PATH || {
         Show 1 "Download uninstall script failed, Please check if your internet connection is working and retry."
         exit 1
@@ -494,18 +585,18 @@ DownloadAndInstallCasaOS() {
 
     ${sudo_cmd} chmod +x $CASA_UNINSTALL_PATH
     Install_Rclone
-    
+
     ## Special markings
 
     Show 0 "CasaOS upgrade successfully"
-    for SERVICE in "${CASA_SERVICES[@]}"; do
+    for SERVICE in ${CASA_SERVICES}; do
         Show 2 "restart ${SERVICE}..."
 
-        ${sudo_cmd} systemctl restart "${SERVICE}" || Show 3 "Service ${SERVICE} does not exist."
+        Restart_Service "${SERVICE}" || Show 3 "Service ${SERVICE} does not exist."
 
     done
 
-    
+
 }
 
 ###############################################################################
