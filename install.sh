@@ -549,7 +549,7 @@ Configuration_Addons() {
     fi
 
     #Udevil
-    if [ -f $PREFIX${UDEVIL_CONF_PATH} ]; then
+    if [ -f "$PREFIX${UDEVIL_CONF_PATH}" ]; then
 
         # GreyStart
         # Add a devmon user
@@ -559,10 +559,10 @@ Configuration_Addons() {
             ${sudo_cmd} passwd -l ${USERNAME}
         }
 
-        if [ "$LSB_DIST" = "alpine" ]; then
-            svcname="devmon"
-        else
+        if [ "$USE_SYSTEMD" = "true" ]; then
             svcname="devmon@${USERNAME}"
+        else
+            svcname="devmon"
         fi
 
         # Add and start Devmon service
