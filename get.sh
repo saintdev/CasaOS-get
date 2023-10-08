@@ -238,7 +238,7 @@ Check_Distribution() {
         ;;
     esac
     Show $sType "Your Linux Distribution is : $LSB_DIST $notice"
-    if [ $sType = 1 ]; then
+    if [ "$sType" = "1" ]; then
         if (whiptail --title "${TITLE}" --yesno --defaultno "Your Linux Distribution is : $LSB_DIST $notice. Continue installation?" 10 60); then
             Show 0 "Distribution check has been ignored."
         else
@@ -506,7 +506,7 @@ Configuration_Addons() {
     fi
 
     #Udevil
-    if [ -f $PREFIX${UDEVIL_CONF_PATH} ]; then
+    if [ -f "$PREFIX${UDEVIL_CONF_PATH}" ]; then
 
         # GreyStart
         # Add a devmon user
@@ -516,10 +516,10 @@ Configuration_Addons() {
             ${sudo_cmd} passwd -l ${USERNAME}
         }
 
-        if [ "$LSB_DIST" = "alpine" ]; then
-            svcname="devmon"
-        else
+        if [ "$USE_SYSTEMD" = "true" ]; then
             svcname="devmon@${USERNAME}"
+        else
+            svcname="devmon"
         fi
 
         # Add and start Devmon service
