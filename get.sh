@@ -409,10 +409,10 @@ Check_Docker_Running() {
     for _ in $(seq 1 3); do
         sleep 3
         if Is_Service_Running docker; then
+            break
+        else
             Show 1 "Docker is not running, try to start"
             Start_Service docker
-        else
-            break
         fi
     done
 }
