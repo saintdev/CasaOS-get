@@ -51,7 +51,7 @@ CASA_DEPANDS_PACKAGE="smartmontools"
 CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} parted"
 CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} ntfs-3g"
 CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} net-tools"
-CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} whiptail" # whiptail is in the newt package on Alpine
+CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} whiptail"
 CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} udevil"
 CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} samba"
 CASA_DEPANDS_PACKAGE="${CASA_DEPANDS_PACKAGE} cifs-utils"
@@ -62,7 +62,7 @@ CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} ntfs-3g"
 CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} netstat"
 CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} whiptail"
 CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} udevil"
-CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} samba"
+CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} smbd"
 CASA_DEPANDS_COMMAND="${CASA_DEPANDS_COMMAND} mount.cifs"
 readonly CASA_DEPANDS_COMMAND
 
@@ -330,7 +330,13 @@ Install_Depends() {
     set -- $CASA_DEPANDS_PACKAGE
     for cmd in $CASA_DEPANDS_COMMAND; do
         if [ ! -x "$(${sudo_cmd} which "$cmd")" ]; then
-            packagesNeeded="${packagesNeeded} $1"
+            local pkg="$1"
+
+            if [ "$LSB_DIST" = "alpine" ] && [ "$cmd" = "whiptail" ]; then
+                # In Alpine `whiptail` is provided by the `newt` package
+                pkg="newt"
+            fi
+            packagesNeeded="${packagesNeeded} ${pkg}"
         fi
         shift
     done
